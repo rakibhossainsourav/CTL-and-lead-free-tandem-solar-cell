@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Charge flow and band alignment in a perovskite/ACIGS 2T tandem solar cell</title>
+<style>
+:root{--bg:#0b1220;--panel:#111a2c;--line:#25324b;--tx:#e8edf8;--mu:#94a3bf}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 14px 30px}
+h1{font-size:22px;font-weight:600;margin:0 0 4px}
+.sub{color:var(--mu);margin:0 0 12px;font-size:14px}
+.ctl{position:sticky;top:0;z-index:5;background:rgba(11,18,32,.94);padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:12px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.bar label{color:var(--mu);font-size:14px;display:flex;align-items:center;gap:8px}
+button{background:var(--panel);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:7px 14px;font:inherit;cursor:pointer}
+button:hover{border-color:#4b5f86}button.on{border-color:#60a5fa;background:#16284d}
+button:focus-visible,input:focus-visible{outline:2px solid #60a5fa;outline-offset:2px}
+.lg{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--mu);margin-top:8px}
+.lg span{display:inline-flex;align-items:center;gap:7px}.lg i{display:inline-block;width:12px;height:12px;border-radius:50%}
+figure{margin:0 0 18px}
+canvas{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+figcaption{color:var(--mu);font-size:13px;margin:6px 2px 0}figcaption b{color:var(--tx);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+.card small{display:block;color:var(--mu);font-size:12px}
+.n{font-size:24px;font-weight:600;margin-top:4px}.n em{font-style:normal;font-size:13px;color:var(--mu);font-weight:400;margin-left:6px}
+.meter{height:6px;background:#0b1220;border-radius:3px;overflow:hidden;margin-top:8px}.meter i{display:block;height:100%;width:0;transition:width .3s}
+h2{font-size:16px;margin:18px 0 6px}
+ul{margin:0;padding-left:20px;color:#c3cde2;max-width:82ch}li{margin:6px 0}
+.note{color:var(--mu);font-size:13px;margin-top:14px}
+</style></head><body><div class="wrap">
+<h1>Charge flow and band alignment in a lead-free perovskite/ACIGS 2T tandem cell</h1>
+<p class="sub">Every absorber generates electron-hole pairs. The staggered band offsets decide where each carrier can go.</p>
+<div class="ctl"><div class="bar">
+<button id="pp">Pause</button>
+<label>Speed <input id="sp" type="range" min="0.25" max="2" step="0.25" value="1"><span id="spv">1×</span></label>
+<span style="flex:1"></span>
+<button class="on" data-f="all">All</button><button data-f="top">Top sub-cell</button><button data-f="bot">Bottom sub-cell</button></div>
+<div class="lg"><span><i style="background:#a78bfa"></i>High-energy photon</span><span><i style="background:#f87171"></i>Low-energy photon</span><span><i style="background:#38bdf8"></i>Electron (−)</span><span><i style="border:2px solid #fb923c"></i>Hole (+)</span><span><b style="color:#f87171">✕</b>Blocked by band offset</span></div></div>
+
+<figure><canvas id="c1" role="img" aria-label="Animated device cross-section showing photons, pair generation in each absorber, charge separation, recombination between sub-cells and the external circuit"></canvas>
+<figcaption><b>Fig. A</b> Device cross-section: light absorption, pair generation and carrier collection.</figcaption></figure>
+<div class="grid" id="cards"></div>
+
+<figure><canvas id="c2" role="img" aria-label="Animated energy band diagram showing staggered alignment that blocks wrong-direction electrons and holes"></canvas>
+<figcaption><b>Fig. B</b> Band diagram. Electrons roll down the conduction-band steps, holes float up the valence-band steps, and the offsets block the wrong direction.</figcaption></figure>
+
+<h2>What the band diagram shows</h2>
+<ul>
+<li><b>Cs₂TiBr₆</b> has a valence band 0.5 eV below MASnI₃. Holes cannot enter it, so only electrons reach FTO. It behaves like an electron-transport layer.</li>
+<li><b>Cs₃Bi₂I₉</b> has a conduction band 0.8 eV above MASnI₃. Electrons cannot enter it, so only holes reach the recombination layer. It behaves like a hole-transport layer.</li>
+<li>Because the outer absorbers do both jobs, the top cell needs no separate ETL or HTL.</li>
+<li>In the bottom cell, the deep valence band of CdS and ZnO blocks ACIGS holes from the front side, so they go to Au. Electrons climb a small CdS spike and reach the recombination layer.</li>
+<li>Top-cell holes and bottom-cell electrons recombine in the middle layer. This joins the sub-cells in series, so the voltages add.</li>
+</ul>
+<p class="note">Illustrative animation. Band edges are read from Fig. 5 of the poster (Au taken as 5.1 eV). Generation shares are qualitative and are not SCAPS-1D output.</p>
+</div>
+<script>
+const $=i=>document.getElementById(i),F=' system-ui,sans-serif',rnd=(a,b)=>a+Math.random()*(b-a);
+function cv(id,W,H){const c=$(id),d=Math.min(devicePixelRatio||1,2);c.width=W*d;c.height=H*d;const x=c.getContext('2d');x.scale(d,d);return x}
+const c1=cv('c1',1000,560),c2=cv('c2',1000,520);let g,t=0,run=true,speed=1,focus='all';
+const fa=c=>(focus==='all'||c===focus)?1:.12;
+function txt(s,x,y,f,col,al){g.font=f;g.fillStyle=col;g.textAlign=al||'center';g.textBaseline='middle';g.fillText(s,x,y)}
+function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function dPh(p){g.globalAlpha=fa(p.cell);g.strokeStyle=p.hi?'#a78bfa':'#f87171';g.shadowColor=g.strokeStyle;g.shadowBlur=8;g.lineWidth=2.5;g.lineCap='round';g.beginPath();g.moveTo(p.x,p.y-14);g.lineTo(p.x,p.y);g.stroke();g.shadowBlur=0}
+function dE(x,y){g.fillStyle='#38bdf8';g.shadowColor='#38bdf8';g.shadowBlur=10;g.beginPath();g.arc(x,y,6.5,0,7);g.fill();g.shadowBlur=0;txt('−',x,y+.5,'bold 12px'+F,'#04283a')}
+function dH(x,y){g.fillStyle='rgba(251,146,60,.2)';g.strokeStyle='#fb923c';g.lineWidth=2;g.beginPath();g.arc(x,y,6.5,0,7);g.fill();g.stroke();txt('+',x,y+.5,'bold 11px'+F,'#fb923c')}
+function dFl(a){a.forEach(f=>{g.globalAlpha=Math.max(0,f.life*1.6);if(f.x_){txt('✕',f.x,f.y,'bold '+(14+f.r*.3)+'px'+F,'#f87171')}else{g.strokeStyle='rgb('+f.c+')';g.lineWidth=1.5;g.beginPath();g.arc(f.x,f.y,f.r,0,7);g.stroke()}});g.globalAlpha=1}
+function updFl(a,dt){for(let i=a.length-1;i>=0;i--){a[i].life-=dt;a[i].r+=dt*38;if(a[i].life<=0)a.splice(i,1)}}
+
+/* ---------- Fig. A: device ---------- */
+const SX=260,SW=360,FY=75,RY=282,AY=469;
+const L=[['FTO',60,30,'#475569'],['Cs₂TiBr₆',92,50,'#5b3fa8'],['MASnI₃',144,70,'#7048c9'],['Cs₃Bi₂I₉',216,50,'#4c3490'],['Recombination layer',268,28,'#64748b'],['ZnO:Al',298,24,'#475569'],['i-ZnO',324,22,'#3f4b5e'],['CdS',348,22,'#a16207'],['ACIGS',372,80,'#0f766e'],['Au',454,30,'#b8902f']];
+const ABS=[1,2,3,8],PATH=[[SX+SW,FY],[740,FY],[740,AY],[SX+SW,AY]],SEG=[0,1,2].map(i=>Math.hypot(PATH[i+1][0]-PATH[i][0],PATH[i+1][1]-PATH[i][1])),PLEN=SEG[0]+SEG[1]+SEG[2];
+let ph=[],car=[],wire=[],fl=[],glow={},cnt={1:0,2:0,3:0,8:0},acc=0;
+function pickLayer(){const hi=Math.random()<.72,r=Math.random();return hi?(r<.22?1:r<.8?2:3):8}
+function spawn(){const lay=pickLayer();ph.push({x:rnd(SX+25,SX+SW-25),y:32,tgt:L[lay][1]+rnd(10,L[lay][2]-10),lay,hi:lay!==8,cell:lay<5?'top':'bot'})}
+function absorb(p){fl.push({x:p.x,y:p.tgt,r:3,life:.55,c:'255,236,160'});cnt[p.lay]++;glow[p.lay]=1;const top=p.lay<5,c=top?'top':'bot';
+car.push({k:'e',x:p.x-3,y:p.tgt,vy:-rnd(85,120),ty:top?FY:RY,dest:top?'fto':'rec',cell:c,ph:rnd(0,6)});
+car.push({k:'h',x:p.x+3,y:p.tgt,vy:rnd(85,120),ty:top?RY:AY,dest:top?'rec':'au',cell:c,ph:rnd(0,6)})}
+function wp(s){let i=0;while(i<2&&s>SEG[i]){s-=SEG[i];i++}const a=PATH[i],b=PATH[i+1],f=s/SEG[i];return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f]}
+function upd1(dt){acc+=dt*11;while(acc>=1){acc--;spawn()}
+for(let i=ph.length-1;i>=0;i--){const p=ph[i];p.y+=250*dt;if(p.y>=p.tgt){absorb(p);ph.splice(i,1)}}
+for(let i=car.length-1;i>=0;i--){const c=car[i];c.y+=c.vy*dt;if(c.vy<0?c.y<=c.ty:c.y>=c.ty){if(c.dest==='fto')wire.push({s:0});fl.push({x:c.x,y:c.ty,r:3,life:.4,c:c.dest==='rec'?'255,255,255':c.k==='e'?'56,189,248':'251,146,60'});car.splice(i,1)}}
+for(let i=wire.length-1;i>=0;i--){wire[i].s+=170*dt;if(wire[i].s>=PLEN){fl.push({x:SX+SW,y:AY,r:3,life:.4,c:'255,255,255'});wire.splice(i,1)}}
+for(const k in glow)glow[k]=Math.max(0,glow[k]-dt*2.2);updFl(fl,dt)}
+function draw1(){g=c1;g.clearRect(0,0,1000,560);
+g.fillStyle='rgba(250,204,21,.55)';rr(SX+10,24,SW-20,4,2);g.fill();txt('Sunlight',SX+SW/2,12,'500 13px'+F,'#fde68a');
+L.forEach((l,i)=>{g.fillStyle=l[3];rr(SX,l[1],SW,l[2],5);g.fill();const gr=g.createLinearGradient(0,l[1],0,l[1]+l[2]);gr.addColorStop(0,'rgba(255,255,255,.16)');gr.addColorStop(1,'rgba(0,0,0,.2)');g.fillStyle=gr;rr(SX,l[1],SW,l[2],5);g.fill();
+if(glow[i]){g.fillStyle='rgba(255,255,255,'+(glow[i]*.22)+')';rr(SX,l[1],SW,l[2],5);g.fill()}
+const ab=ABS.includes(i);txt(l[0],SX+SW/2,l[1]+l[2]/2,(ab?'600 15px':'500 12px')+F,'#fff');if(ab)txt('absorber',SX+SW-10,l[1]+l[2]/2,'11px'+F,'rgba(255,255,255,.6)','right')});
+g.strokeStyle='#4b5f86';g.lineWidth=1.5;[[92,266],[298,484]].forEach(b=>{g.beginPath();g.moveTo(250,b[0]);g.lineTo(250,b[1]);g.stroke()});
+txt('Top',238,172,'600 14px'+F,'#cbd5e1','right');txt('sub-cell',238,190,'13px'+F,'#94a3bf','right');txt('Bottom',238,384,'600 14px'+F,'#cbd5e1','right');txt('sub-cell',238,402,'13px'+F,'#94a3bf','right');
+txt('Recombination:',238,274,'12px'+F,'#94a3bf','right');txt('h⁺ meets e⁻',238,291,'12px'+F,'#94a3bf','right');
+g.strokeStyle='#5b6b8c';g.lineWidth=2;g.beginPath();g.moveTo(SX+SW,FY);g.lineTo(740,FY);g.lineTo(740,240);g.moveTo(740,310);g.lineTo(740,AY);g.lineTo(SX+SW,AY);g.stroke();
+let n=0;wire.forEach(w=>{const p=wp(w.s);if(p[0]===740&&p[1]>240&&p[1]<310)n++});
+g.fillStyle='rgba(250,204,21,'+(.08+Math.min(1,n/2)*.5).toFixed(2)+')';rr(705,240,70,70,8);g.fill();g.strokeStyle='#8a7a3a';g.lineWidth=1.5;rr(705,240,70,70,8);g.stroke();txt('Load',740,275,'600 14px'+F,'#fde68a');
+txt('Electrons collected',740,38,'12px'+F,'#7dd3fc');txt('at FTO (−)',740,54,'12px'+F,'#7dd3fc');txt('Holes collected',740,505,'12px'+F,'#fdba74');txt('at Au (+)',740,521,'12px'+F,'#fdba74');
+ph.forEach(dPh);g.globalAlpha=1;
+car.forEach(c=>{const x=c.x+Math.sin(t*5+c.ph)*2;g.globalAlpha=fa(c.cell)*Math.min(1,Math.abs(c.y-c.ty)/10+.25);c.k==='e'?dE(x,c.y):dH(x,c.y)});g.globalAlpha=1;
+wire.forEach(w=>{const p=wp(w.s);dE(p[0],p[1])});dFl(fl)}
+
+/* ---------- Fig. B: band diagram ---------- */
+const Y=e=>60+(-3-e)*78,mn=e=>String(e).replace('-','−');
+const B=[['FTO',80,-4.4,-7.6,'#64748b'],['Cs₂TiBr₆',100,-4.5,-6.1,'#7c5cd6'],['MASnI₃',150,-4.2,-5.6,'#9b72f0'],['Cs₃Bi₂I₉',100,-3.4,-5.4,'#6a4fb8'],['',40,0,0,''],['ZnO:Al',64,-4.6,-7.9,'#64748b'],['i-ZnO',50,-4.6,-7.9,'#586274'],['CdS',50,-4.2,-6.6,'#d19a1c'],['ACIGS',170,-4.6,-5.8,'#14b8a6'],['Au',80,-5.1,-5.1,'#b8902f']];
+const bx=[];{let x=62;B.forEach(b=>{bx.push([x,x+b[1]]);x+=b[1]})}
+const E=i=>Y(B[i][2]),V=i=>Y(B[i][3]),RC=(bx[4][0]+bx[4][1])/2;
+let pb=[],cb=[],fb=[],acc2=0;
+function eTop(i,x){const p=[[x,E(i)],[bx[i][0],E(i)]];for(let k=i-1;k>=0;k--)p.push([bx[k][1],E(k)],[bx[k][0],E(k)]);p.push([22,E(0)]);return p}
+function hTop(i,x){const p=[[x,V(i)],[bx[i][1],V(i)]];for(let k=i+1;k<=3;k++)p.push([bx[k][0],V(k)],[bx[k][1],V(k)]);p.push([RC,V(3)]);return p}
+function eBot(x){const p=[[x,E(8)],[bx[8][0],E(8)]];for(let k=7;k>=5;k--)p.push([bx[k][1],E(k)],[bx[k][0],E(k)]);p.push([RC,E(5)]);return p}
+function hBot(x){return[[x,V(8)],[bx[8][1],V(8)],[bx[9][0]+25,Y(-5.1)]]}
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+function mkC(k,p,dest,cell,mark,y0){const L=[0];for(let i=1;i<p.length;i++)L.push(L[i-1]+dist(p[i],p[i-1]));return{k,p,L,s:0,dest,cell,mark,y0,age:0,v:rnd(95,130)}}
+function bounce(p,bar){return{p:[p[0],bar].concat(p),m:dist(p[0],bar)}}
+function genB(i,x){const top=i<5,cell=top?'top':'bot';let pe=top?eTop(i,x):eBot(x),pf=top?hTop(i,x):hBot(x),me=0,mh=0;
+if(i===2&&Math.random()<.45){const r=bounce(pe,[bx[2][1]-1,E(2)]);pe=r.p;me=r.m}
+if(i===2&&Math.random()<.45){const r=bounce(pf,[bx[2][0]+1,V(2)]);pf=r.p;mh=r.m}
+if(i===8&&Math.random()<.5){const r=bounce(pf,[bx[8][0]+1,V(8)]);pf=r.p;mh=r.m}
+cb.push(mkC('e',pe,top?'ext':'rec',cell,me,V(i)),mkC('h',pf,top?'rec':'au',cell,mh,0))}
+function at(c){let i=1;while(i<c.L.length-1&&c.L[i]<c.s)i++;const f=Math.min(1,(c.s-c.L[i-1])/((c.L[i]-c.L[i-1])||1));return[c.p[i-1][0]+(c.p[i][0]-c.p[i-1][0])*f,c.p[i-1][1]+(c.p[i][1]-c.p[i-1][1])*f]}
+function upd2(dt){acc2+=dt*7;while(acc2>=1){acc2--;const lay=pickLayer(),x=rnd(bx[lay][0]+14,bx[lay][1]-14);pb.push({x,y:28,tgt:Y((B[lay][2]+B[lay][3])/2),lay,hi:lay!==8,cell:lay<5?'top':'bot'})}
+for(let i=pb.length-1;i>=0;i--){const p=pb[i];p.y+=230*dt;if(p.y>=p.tgt){fb.push({x:p.x,y:p.tgt,r:3,life:.55,c:'255,236,160'});genB(p.lay,p.x);pb.splice(i,1)}}
+for(let i=cb.length-1;i>=0;i--){const c=cb[i];c.age+=dt;if(!(c.k==='e'&&c.age<.4))c.s+=c.v*dt;
+if(c.mark&&!c.fm&&c.s>=c.mark){c.fm=1;const q=c.p[1];fb.push({x:q[0],y:q[1],r:2,life:.8,x_:1})}
+if(c.s>=c.L[c.L.length-1]){const q=c.p[c.p.length-1];fb.push({x:q[0],y:q[1],r:3,life:.4,c:c.dest==='rec'?'255,255,255':c.k==='e'?'56,189,248':'251,146,60'});cb.splice(i,1)}}
+updFl(fb,dt)}
+function draw2(){g=c2;g.clearRect(0,0,1000,520);
+g.strokeStyle='#4b5f86';g.lineWidth=1;g.beginPath();g.moveTo(54,50);g.lineTo(54,452);g.stroke();
+for(let e=-3;e>=-8;e--){g.beginPath();g.moveTo(50,Y(e));g.lineTo(54,Y(e));g.stroke();txt(mn(e),46,Y(e),'11px'+F,'#94a3bf','right')}
+g.save();g.translate(11,250);g.rotate(-Math.PI/2);txt('Energy (eV)',0,0,'12px'+F,'#94a3bf');g.restore();
+g.setLineDash([4,4]);g.strokeStyle='#3a4a68';[[0,1],[1,2],[2,3],[5,6],[6,7],[7,8]].forEach(([a,b])=>{const x=bx[a][1];[2,3].forEach(k=>{g.beginPath();g.moveTo(x,Y(B[a][k]));g.lineTo(x,Y(B[b][k]));g.stroke()})});
+g.strokeStyle='#64748b';rr(bx[4][0]+4,96,bx[4][1]-bx[4][0]-8,344,6);g.stroke();g.setLineDash([]);
+txt('Recomb.',RC,470,'11px'+F,'#94a3bf');txt('layer',RC,484,'11px'+F,'#94a3bf');
+B.forEach((b,i)=>{if(i===4)return;const [a,z]=bx[i],w=z-a;
+if(i===9){const gr=g.createLinearGradient(0,Y(-5.1),0,Y(-6.6));gr.addColorStop(0,b[4]);gr.addColorStop(1,'rgba(184,144,47,.15)');g.fillStyle=gr;g.fillRect(a,Y(-5.1),w,117);g.strokeStyle=b[4];g.lineWidth=2.5;g.beginPath();g.moveTo(a,Y(-5.1));g.lineTo(z,Y(-5.1));g.stroke();txt('Au',(a+z)/2,Y(-5.1)+32,'600 13px'+F,'#fff');txt('E_F −5.1',(a+z)/2,Y(-5.1)-10,'11px'+F,'#cbd5e1');txt('Au',(a+z)/2,470,'600 12px'+F,'#e2e8f0');return}
+const tp=Y(b[2]),bt=Y(b[3]);g.fillStyle=b[4]+'40';g.fillRect(a,tp,w,bt-tp);g.strokeStyle=b[4];g.lineWidth=3;g.beginPath();g.moveTo(a,tp);g.lineTo(z,tp);g.moveTo(a,bt);g.lineTo(z,bt);g.stroke();
+txt(mn(b[2]),(a+z)/2,tp-9,'11px'+F,'#cbd5e1');txt(mn(b[3]),(a+z)/2,bt+11,'11px'+F,'#cbd5e1');txt('Eg '+(b[2]-b[3]).toFixed(1),(a+z)/2,(tp+bt)/2,'11px'+F,'rgba(255,255,255,.55)');
+txt(b[0],(a+z)/2,470,(w<60?'600 11px':'600 12px')+F,'#e2e8f0')});
+txt('Sunlight enters from the left through FTO',500,508,'12px'+F,'#94a3bf');
+g.strokeStyle='#ef4444';g.lineWidth=4;[[bx[1][1],Y(-5.6),Y(-6.1)],[bx[2][1],Y(-3.4),Y(-4.2)],[bx[8][0],Y(-5.8),Y(-6.6)]].forEach(b=>{g.beginPath();g.moveTo(b[0],b[1]);g.lineTo(b[0],b[2]);g.stroke()});
+txt('h⁺ blocked · ΔEv 0.5 eV',bx[1][1]+8,322,'600 12px'+F,'#f87171','left');txt('e⁻ blocked · ΔEc 0.8 eV',bx[2][1],76,'600 12px'+F,'#f87171');txt('h⁺ blocked · ΔEv 0.8 eV',bx[8][0]+8,358,'600 12px'+F,'#f87171','left');
+pb.forEach(dPh);g.globalAlpha=1;
+cb.forEach(c=>{let q=at(c);if(c.k==='e'&&c.age<.4){const f=c.age/.4;q=[c.p[0][0],c.y0+(c.p[0][1]-c.y0)*f*(2-f)]}
+g.globalAlpha=fa(c.cell)*Math.min(1,(c.L[c.L.length-1]-c.s)/12+.2);c.k==='e'?dE(q[0],q[1]):dH(q[0],q[1])});g.globalAlpha=1;dFl(fb)}
+
+/* ---------- loop ---------- */
+const info=[[1,'Cs₂TiBr₆','Top sub-cell','#7c5cd6'],[2,'MASnI₃','Top sub-cell','#9b72f0'],[3,'Cs₃Bi₂I₉','Top sub-cell','#6a4fb8'],[8,'ACIGS','Bottom sub-cell','#14b8a6']];
+$('cards').innerHTML=info.map(a=>'<div class="card"><b>'+a[1]+'</b><small>'+a[2]+'</small><div class="n" id="n'+a[0]+'">0</div><div class="meter"><i id="m'+a[0]+'" style="background:'+a[3]+'"></i></div></div>').join('');
+setInterval(()=>{const T=Object.values(cnt).reduce((a,b)=>a+b,0)||1;info.forEach(a=>{const p=Math.round(cnt[a[0]]/T*100);$('n'+a[0]).innerHTML=cnt[a[0]]+'<em>pairs · '+p+'% of total</em>';$('m'+a[0]).style.width=p+'%'})},250);
+let last=performance.now();
+function frame(n){const dt=Math.min(.05,(n-last)/1000);last=n;if(run){t+=dt*speed;upd1(dt*speed);upd2(dt*speed)}draw1();draw2();requestAnimationFrame(frame)}
+$('pp').onclick=()=>{run=!run;$('pp').textContent=run?'Pause':'Play'};
+$('sp').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×'};
+document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{focus=b.dataset.f;document.querySelectorAll('[data-f]').forEach(x=>x.classList.toggle('on',x===b))});
+for(let i=0;i<70;i++){upd1(.05);upd2(.05)}
+if(matchMedia('(prefers-reduced-motion: reduce)').matches){run=false;$('pp').textContent='Play'}
+requestAnimationFrame(frame);
+</script></body></html>
